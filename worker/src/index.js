@@ -77,6 +77,8 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
     if (request.method !== "GET") return json({ error: "Método no permitido." }, 405, origin);
 
+    // Sin límite de consultas configurado, el Worker no atiende: así nunca queda como proxy abierto.
+    if (!env.PER_IP || !env.GLOBAL) return json({ error: "Servicio no configurado." }, 503, origin);
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
     const [perIp, global] = await Promise.all([env.PER_IP.limit({ key: ip }), env.GLOBAL.limit({ key: "all" })]);
     if (!perIp.success || !global.success) return json({ error: "Demasiadas consultas. Espera un minuto y vuelve a probar." }, 429, origin);

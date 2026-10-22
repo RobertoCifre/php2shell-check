@@ -109,7 +109,7 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
         <li><code>php -r</code>: versión del PHP de la línea de comandos, por si está compilado a mano.</li>
         <li><code>apache2ctl -M</code>, <code>pgrep</code>: si Apache tiene cargado PHP o si hay PHP-FPM, LiteSpeed o FrankenPHP en marcha.</li>
         <li><code>/proc/*/maps</code>: cuántos procesos siguen usando una librería de PHP ya borrada, es decir, que no se reiniciaron tras actualizar.</li>
-        <li><code>docker ps</code>: si hay contenedores con PHP, cuya versión no se ve desde fuera del contenedor.</li>
+        <li><code>docker ps</code> / <code>podman ps</code>: cuántos contenedores hay en marcha. Muchos llevan PHP dentro (WordPress, por ejemplo) y su versión no se ve desde fuera.</li>
       </ul>
     </details>
   </section>
@@ -181,7 +181,9 @@ echo "mods=$( (apache2ctl -M || httpd -M) 2>/dev/null | grep -Eo 'php[0-9_]*_mod
 echo "fpm=$(pgrep -a php-fpm 2>/dev/null | grep -Eo 'php-fpm[0-9.]*' | head -1)"
 echo "other=$(pgrep -a 'lsphp|frankenphp|php-cgi' 2>/dev/null | grep -Eo 'lsphp|frankenphp|php-cgi' | sort -u | tr '\\n' ' ')"
 echo "stale=$(grep -l 'php.*(deleted)' /proc/[0-9]*/maps 2>/dev/null | wc -l)"
-echo "containers=$(docker ps --format '{{.Image}}' 2>/dev/null | grep -ci php)"`;
+echo "containers=$(docker ps --format '{{.Image}}' 2>/dev/null | grep -ci php)"
+echo "ctrcli=$(command -v docker podman nerdctl 2>/dev/null | head -1)"
+echo "ctrs=$( (docker ps -q || podman ps -q) 2>/dev/null | wc -l)"`;
 
 const SAMPLE = `### php2shell-check v2
 os=ubuntu 24.04
@@ -193,7 +195,9 @@ mods=php_module
 fpm=
 other=
 stale=0
-containers=0`;
+containers=0
+ctrcli=
+ctrs=0`;
 
 // Versiones corregidas, iguales para las dos CVE (fuentes en el pie). ESM = solo con Ubuntu Pro.
 const UBUNTU = {
@@ -240,7 +244,7 @@ function upstreamOf(v){ const m=(v||"").replace(/^\d+:/,"").match(/^(\d+\.\d+\.\
 function branchOf(v){ const m=(v||"").match(/^(\d+)\.(\d+)/); return m?m[1]+"."+m[2]:null; }
 
 function parse(text){
-  const r={os:"",id:"",ver:"",uid:"",pkgs:[],phpv:"",mods:"",fpm:"",other:"",stale:"",containers:"",valid:/###\s*php2shell-check\s+v[12]\b/.test(text)};
+  const r={os:"",id:"",ver:"",uid:"",pkgs:[],phpv:"",mods:"",fpm:"",other:"",stale:"",containers:"",ctrcli:"",ctrs:"",valid:/###\s*php2shell-check\s+v[12]\b/.test(text)};
   for(const raw of text.split(/\r?\n/)){
     const line=raw.trim(); const k=line.indexOf("="); if(k<0) continue;
     const key=line.slice(0,k), val=line.slice(k+1).trim();
@@ -261,8 +265,8 @@ function branches(pkgs){
     else if((m=p.name.match(/^ea-php(\d)(\d+)-/))) br=m[1]+"."+m[2];
     else if(p.name==="php-common" && !/ubuntu|deb/.test(p.ver)) br=branchOf(p.ver.replace(/^\d+:/,""));
     if(!br) continue;
-    // Para cada rama vale la versión del paquete -common; si no, la del módulo de Apache.
-    if(!map[br] || /-common$/.test(p.name)) map[br]=p;
+    // Para cada rama vale la versión más baja instalada (cubre paquetes retenidos a medias).
+    if(!map[br] || dpkgCmp(p.ver,map[br].ver)<0) map[br]=p;
   }
   return map;
 }
@@ -307,22 +311,28 @@ function judgeBranch(br,pkg,r){
 function evaluate(r){
   const serving=[r.mods&&"Apache con mod_php", r.fpm&&"PHP-FPM", r.other&&r.other].filter(Boolean);
   const stale=parseInt(r.stale,10)||0, containers=parseInt(r.containers,10)||0, root=r.uid==="0";
+  const ctrs=Math.max(parseInt(r.ctrs,10)||0, containers);
+  const blindCtrs=!!r.ctrcli && !root && !ctrs; // hay docker/podman pero sin sudo no se ven los contenedores
   const facts=[["Sistema",r.os||"no detectado"],["PHP sirviendo web",serving.length?serving.join(", "):"no"]];
   if(r.stale!=="") facts.push(["Procesos con PHP antiguo",String(stale)+(root?"":" (sin sudo, puede que no los vea todos)")]);
-  if(containers) facts.push(["Contenedores con PHP",String(containers)]);
+  if(ctrs) facts.push(["Contenedores en marcha",String(ctrs)+(containers?` (${containers} con «php» en la imagen)`:"")]);
+  else if(blindCtrs) facts.push(["Contenedores","no visibles sin sudo"]);
   if(!r.valid) return {state:"info",title:"No reconozco esta salida",why:"Pega el resultado completo del comando del paso 1. Debe empezar por «### php2shell-check».",facts:[],fix:[]};
 
   const restart=[];
   if(r.mods) restart.push("sudo systemctl restart apache2   # o httpd en RHEL/Amazon Linux");
   if(r.fpm) restart.push("sudo systemctl restart "+r.fpm.replace(/^php-fpm/,"php")+"-fpm   # ajusta al nombre de tu servicio");
-  const dockerHint="Comprueba la versión dentro de cada contenedor: docker exec <contenedor> php -r 'echo PHP_VERSION;' y compárala con la tabla de abajo.";
+  const dockerHint="Comprueba la versión dentro de cada contenedor (también los de WordPress, aunque su imagen no diga «php»): docker exec <contenedor> php -r 'echo PHP_VERSION;' y compárala con la tabla de abajo.";
+  const sudoHint="Repite el comando del paso 1 con sudo para que pueda ver los contenedores.";
 
   const map=branches(r.pkgs);
   const list=Object.entries(map);
   if(!list.length && r.phpv) list.push([branchOf(r.phpv)||"?",{name:"php",ver:r.phpv}]);
   if(!list.length){
-    if(serving.length||containers||stale) return {state:"info",facts,title:"Hay PHP en marcha, pero no veo su versión",why:"Hay procesos de PHP o contenedores con PHP, pero no hay paquetes de PHP instalados en el sistema. Suele pasar cuando PHP va dentro de Docker.",fix:[dockerHint]};
-    return {state:"ok",facts,title:"No hay PHP en este servidor",why:"No se encontró ningún paquete, binario, proceso ni contenedor de PHP. Estos fallos no te afectan aquí.",fix:[]};
+    if(serving.length||stale) return {state:"info",label:"Revisar",facts,title:"Hay PHP en marcha, pero no veo su versión",why:"Hay procesos de PHP en marcha, pero no hay paquetes de PHP instalados en el sistema. Suele pasar cuando PHP va dentro de un contenedor.",fix:[dockerHint]};
+    if(ctrs) return {state:"info",label:"Revisar contenedores",facts,title:"No hay PHP en el sistema, pero hay contenedores",why:`El sistema no tiene PHP instalado, pero hay ${ctrs} contenedor(es) en marcha. Muchas imágenes (por ejemplo, la oficial de WordPress) llevan PHP dentro y desde fuera no se ve.`,fix:[dockerHint]};
+    if(blindCtrs) return {state:"info",label:"Revisar",facts,title:"No hay PHP en el sistema, pero no puedo ver los contenedores",why:"Hay Docker o Podman instalado y el comando se ejecutó sin sudo, así que no puedo saber si hay contenedores con PHP.",fix:[sudoHint]};
+    return {state:"ok",label:"Sin PHP",facts,title:"No hay PHP en este servidor",why:"No se encontró ningún paquete, binario, proceso ni contenedor de PHP. Estos fallos no te afectan aquí.",fix:[]};
   }
 
   const results=list.map(([br,p])=>({br,p,...judgeBranch(br,p,r)}));
@@ -332,7 +342,7 @@ function evaluate(r){
   let fix=[];
   if(vulns.some(x=>x.esm)) fix.push("Esta versión de Ubuntu ya no tiene soporte estándar: el parche solo está en Ubuntu Pro (ESM). Actívalo con «sudo pro attach» o actualiza a una LTS soportada.");
   fix=fix.concat([...new Set(vulns.map(x=>x.fix).filter(Boolean))]);
-  if(containers) fix.push(dockerHint);
+  if(ctrs) fix.push(dockerHint); else if(blindCtrs) fix.push(sudoHint);
 
   if(vulns.length){
     fix=fix.concat(restart);
@@ -345,9 +355,10 @@ function evaluate(r){
   if(stale>0) return {state:"bad",facts,title:"Parcheado en disco, pero sin reiniciar",why:why+` Aun así, ${stale} proceso(s) siguen usando la librería de PHP antigua, que sigue siendo vulnerable hasta que reinicies.`,fix:restart.length?restart:["Reinicia el servidor web o el servicio de PHP que esté en marcha."]};
   if(serving.length && !root){
     const reason=r.uid===""?" Esta salida es de una versión anterior del comando, que no comprueba si se reinició el servidor web.":" Ejecutaste el comando sin sudo, así que no puedo ver si los procesos del servidor web ya usan la versión nueva.";
-    return {state:"ok",facts,title:"Parcheado en disco (confirma el reinicio)",why:why+reason,fix:["Repite el comando del paso 1 con sudo para confirmarlo, o reinicia el servicio para ir sobre seguro:"].concat(restart)};
+    return {state:"ok",label:"Parcheado · confirma el reinicio",facts,title:"Parcheado en disco (confirma el reinicio)",why:why+reason,fix:["Repite el comando del paso 1 con sudo para confirmarlo, o reinicia el servicio para ir sobre seguro:"].concat(restart)};
   }
-  return {state:"ok",facts,title:"Parcheado",why:why+(serving.length?" Y los procesos en marcha ya usan la versión nueva.":""),fix:containers?[dockerHint]:[]};
+  if(ctrs) return {state:"ok",label:"Parcheado · revisa contenedores",facts,title:"Parcheado (revisa también los contenedores)",why:why+(serving.length?" Y los procesos en marcha ya usan la versión nueva.":"")+` Hay ${ctrs} contenedor(es) en marcha cuyo PHP no se ve desde fuera.`,fix:[dockerHint]};
+  return {state:"ok",label:"Parcheado",facts,title:"Parcheado",why:why+(serving.length?" Y los procesos en marcha ya usan la versión nueva.":""),fix:blindCtrs?[sudoHint]:[]};
 }
 
 // Análisis externo por cabeceras HTTP. Solo da "vulnerable" cuando la versión visible lo demuestra.
@@ -411,7 +422,7 @@ function hopsToText(data){
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 const isCmd=f=>/^(sudo|Consulta|curl|docker)/.test(f);
 function verdictHTML(v,labels,example){
-  const pill=(example?"Ejemplo · ":"")+labels[v.state];
+  const pill=(example?"Ejemplo · ":"")+(v.label||labels[v.state]);
   return `
     <div class="verdict ${v.state}">
       <span class="pill">${esc(pill)}</span>

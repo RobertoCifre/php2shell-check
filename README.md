@@ -6,7 +6,7 @@ Comprueba si un servidor está afectado por las vulnerabilidades críticas de PH
 
 ## Cómo funciona
 
-- **Tu servidor (fiable):** ejecutas un comando de solo lectura, pegas la salida y obtienes el veredicto y el comando para parchear según tu distribución. Detecta varias versiones de PHP a la vez, PHP en contenedores y procesos que siguen usando la versión antigua porque no se reiniciaron. Este paso se calcula en tu navegador: no se envía nada.
+- **Tu servidor (fiable):** ejecutas un comando de solo lectura, pegas la salida y obtienes el veredicto y el comando para parchear según tu distribución. Evalúa todas las versiones de PHP instaladas, detecta procesos que siguen usando la versión antigua porque no se reiniciaron y avisa si hay contenedores en marcha, cuyo PHP hay que revisar por dentro. Este paso se calcula en tu navegador: no se envía nada.
 - **Una web ajena (orientativo):** escribes la dirección (o pegas la salida de `curl -sIL`) y ves qué enseña desde fuera. Casi nunca basta para confirmar que está a salvo, y la herramienta lo dice.
 
 La página no carga nada de terceros y declara una Content-Security-Policy que solo le permite conectar con el Worker del modo automático.
