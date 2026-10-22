@@ -82,6 +82,21 @@ details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;
 .privacy{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
 .err{color:var(--bad);font-size:15px}
 a{color:var(--accent)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.check{display:flex;flex-direction:column;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.urlrow{display:flex;gap:10px;flex-wrap:wrap}
+.urlrow input{flex:1 1 260px;min-width:0;font:400 18px/1.3 var(--f-body);padding:14px 16px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}
+.urlrow input:focus{border-color:var(--accent);outline:none}
+.btn.big{font-size:17px;padding:14px 26px;border-radius:10px}
+.hops{display:flex;flex-direction:column;gap:12px}
+.hop{border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0}
+.hop-head{display:flex;gap:10px;align-items:baseline;padding:8px 12px;background:var(--code-bg);font:500 13.5px/1.4 var(--f-mono);flex-wrap:wrap}
+.hop-head .st{font-weight:600}
+.hop-head .u{color:var(--muted);overflow-wrap:anywhere;min-width:0}
+.hop table{font:400 13.5px/1.45 var(--f-mono)} .hop td{padding:6px 12px} .hop td:first-child{color:var(--muted);white-space:nowrap;width:1%}
+.hop td:last-child{overflow-wrap:anywhere}
+.hl td{background:var(--warn-bg)}
+.divider{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:28px}
 footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:18px}
 @media (max-width:520px){dl.facts{grid-template-columns:1fr} dl.facts dt{margin-top:6px}}
 @media (prefers-reduced-motion:no-preference){.verdict{transition:border-color .2s}}
@@ -91,10 +106,35 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
 <div class="wrap">
   <header>
     <div class="eyebrow"><span class="cve">CVE-2026-109618</span><span class="cve">CVE-2026-109619</span><span>CVSS 9.2 · publicado 21/10/2026</span></div>
-    <h1>¿Tu servidor tiene que parchear PHP?</h1>
-    <p class="lede">Dos fallos críticos de PHP permiten ejecutar código en el servidor sin contraseña. Desde fuera no se puede saber si un servidor está parcheado: muchas distribuciones corrigen el fallo sin cambiar el número de versión. Esta página lo comprueba con los datos de tu propio servidor.</p>
+    <h1>¿Esta web es vulnerable al fallo crítico de PHP?</h1>
+    <p class="lede">Dos fallos de PHP permiten tomar el control de un servidor web sin contraseña. Escribe una dirección y mira lo que esa web deja ver de su PHP.</p>
     <div class="byline"><span>Hecho por <a href="https://github.com/RobertoCifre" target="_blank" rel="noopener">Roberto Cifre</a></span><span>Datos verificados el 22/10/2026</span><span><a href="https://github.com/RobertoCifre/php2shell-check" target="_blank" rel="noopener">Código fuente</a></span></div>
   </header>
+
+  <section class="check" aria-labelledby="s5">
+    <h2 id="s5" class="sr-only">Comprobar una web</h2>
+    <form id="urlform" class="urlrow" novalidate>
+      <label for="url" class="sr-only">Dirección de la web</label>
+      <input type="text" id="url" inputmode="url" placeholder="fcbarcelona.com" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+      <button class="btn big" id="fetchbtn" type="submit">Analizar</button>
+    </form>
+    <p id="fetcherr" class="err" aria-live="polite" hidden></p>
+    <div id="hresult" aria-live="polite"></div>
+    <div id="hheaders"></div>
+    <p class="note">Se consultan solo las cabeceras de la web, como hace un navegador al abrirla; no se descarga su contenido ni se guarda nada. Desde fuera casi nunca se puede confirmar que una web está a salvo: si administras el servidor, usa la comprobación de abajo.</p>
+    <details id="manual">
+      <summary>Hacerlo a mano con curl</summary>
+      <div class="step" style="margin-top:12px">
+        <p class="muted">Ejecuta esto en tu ordenador, cambiando la dirección, y pega aquí el resultado.</p>
+        <div class="codebox"><pre id="curlcmd">curl -sIL https://www.ejemplo.com/</pre></div>
+        <label for="hdrs" class="muted">Cabeceras de la respuesta</label>
+        <textarea id="hdrs" spellcheck="false" autocomplete="off" style="min-height:150px" placeholder="HTTP/2 200&#10;server: …"></textarea>
+        <div class="row"><button class="btn" id="hcheck" type="button">Analizar cabeceras</button><button class="btn ghost" id="hclear" type="button">Vaciar</button></div>
+      </div>
+    </details>
+  </section>
+
+  <div class="divider"><h2>¿Administras el servidor? Comprobación fiable</h2><p class="muted">Desde dentro sí se puede saber con certeza, porque se ve el paquete exacto de PHP instalado.</p></div>
 
   <section class="step" aria-labelledby="s1">
     <div class="step-head"><span class="num">1</span><h2 id="s1">Ejecuta este comando en tu servidor</h2></div>
@@ -122,24 +162,6 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
     <div class="row"><button class="btn" id="check" type="button">Comprobar</button><button class="btn ghost" id="clear" type="button">Vaciar</button></div>
     <div id="result" aria-live="polite"></div>
     <div class="privacy"><span aria-hidden="true">🔒</span><span>Este paso se calcula en tu navegador. Lo que pegas no se envía a ningún sitio ni se guarda.</span></div>
-  </section>
-
-  <section class="step" aria-labelledby="s5">
-    <h2 id="s5">¿Y una web que no es tuya?</h2>
-    <p class="muted">Si no tienes acceso al servidor (la web de un proveedor, por ejemplo), solo puedes ver lo que la web enseña desde fuera. Desde fuera casi nunca se puede confirmar que una web está a salvo: si sale "no se puede determinar", quien administra el servidor debe usar los pasos 1 y 2.</p>
-    <div id="automode" class="step" hidden>
-      <label for="url" class="muted">Dirección de la web</label>
-      <div class="row"><input type="url" id="url" placeholder="https://www.ejemplo.com/" autocomplete="off" spellcheck="false"><button class="btn" id="fetchbtn" type="button">Analizar</button></div>
-      <p id="fetcherr" class="err" aria-live="polite" hidden></p>
-      <p class="note">Al pulsar Analizar, la dirección pasa por un servicio propio que pide a esa web solo sus cabeceras (no el contenido), como haría un navegador. No guarda nada. Este modo no puede ver la cabecera <code>Server</code>; si la necesitas, usa el comando de abajo.</p>
-    </div>
-    <p class="muted" id="manualintro">Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado. Es una petición normal, como abrir la página.</p>
-    <div class="codebox"><pre id="curlcmd">curl -sIL https://www.ejemplo.com/</pre></div>
-    <label for="hdrs" class="muted">Cabeceras de la respuesta (no la dirección de la web)</label>
-    <textarea id="hdrs" spellcheck="false" autocomplete="off" style="min-height:150px"></textarea>
-    <div class="row"><span class="badge-ex" id="hexbadge">Ejemplo: web que expone su versión de PHP</span></div>
-    <div class="row"><button class="btn" id="hcheck" type="button">Analizar cabeceras</button><button class="btn ghost" id="hclear" type="button">Vaciar</button></div>
-    <div id="hresult" aria-live="polite"></div>
   </section>
 
   <section class="step" aria-labelledby="s3">
@@ -436,10 +458,18 @@ const L1={bad:"Vulnerable",warn:"Vulnerable · no expuesto",ok:"Sin riesgo",info
 const L2={bad:"Vulnerable",warn:"Atención",ok:"Parcheada (según cabecera)",info:"No se puede determinar"};
 const $=id=>document.getElementById(id);
 function render(){ $("result").innerHTML=verdictHTML(evaluate(parse($("out").value)),L1,$("out").value.trim()===SAMPLE.trim()); }
-function renderH(){ $("hresult").innerHTML=verdictHTML(evaluateHeaders($("hdrs").value),L2,$("hdrs").value.trim()===HSAMPLE.trim()); }
+function renderH(){ $("hheaders").innerHTML=""; $("hresult").innerHTML=verdictHTML(evaluateHeaders($("hdrs").value),L2,false); }
+// Tabla de cabeceras de respuesta, una por salto (redirecciones incluidas). Resalta las que delatan PHP.
+const TELL=/^(x-powered-by|set-cookie|x-pingback|link|x-generator)$/;
+function headersHTML(hops){
+  return `<div class="hops"><p><strong>Cabeceras de respuesta</strong></p>${hops.map(h=>`
+    <div class="hop"><div class="hop-head"><span class="st">${esc(h.status)}</span><span class="u">${esc(h.url)}</span></div>
+    ${h.headers.length?`<table>${h.headers.map(([n,v])=>`<tr${TELL.test(n)&&/php|wp-json|xmlrpc|drupal|joomla|PHPSESSID/i.test(v)?' class="hl"':""}><td>${esc(n)}</td><td>${esc(v)}</td></tr>`).join("")}</table>`:`<p class="note" style="padding:8px 12px">Sin cabeceras relevantes.</p>`}</div>`).join("")}
+    <p class="note">La cabecera <code>Server</code> no se muestra: el servicio que hace la consulta no puede verla.</p></div>`;
+}
 
 $("cmd").textContent=CMD;
-$("out").value=SAMPLE; $("hdrs").value=HSAMPLE;
+$("out").value=SAMPLE;
 $("fixtable").innerHTML=[
   ...Object.entries(UBUNTU).map(([k,u])=>[`Ubuntu ${k}${u.esm?" (solo Ubuntu Pro)":""}`,u.pkg,u.fix]),
   ...Object.values(DEBIAN).map(d=>[d.name,d.pkg,d.fix]),
@@ -451,9 +481,8 @@ const syncBadge=(ta,badge,sample)=>{$(badge).hidden=$(ta).value.trim()!==sample.
 $("check").addEventListener("click",()=>{syncBadge("out","exbadge",SAMPLE); render();});
 $("clear").addEventListener("click",()=>{$("out").value="";$("result").innerHTML="";$("exbadge").hidden=true;$("out").focus();});
 $("out").addEventListener("input",()=>syncBadge("out","exbadge",SAMPLE));
-$("hcheck").addEventListener("click",()=>{syncBadge("hdrs","hexbadge",HSAMPLE); renderH();});
-$("hclear").addEventListener("click",()=>{$("hdrs").value="";$("hresult").innerHTML="";$("hexbadge").hidden=true;$("hdrs").focus();});
-$("hdrs").addEventListener("input",()=>syncBadge("hdrs","hexbadge",HSAMPLE));
+$("hcheck").addEventListener("click",renderH);
+$("hclear").addEventListener("click",()=>{$("hdrs").value="";$("hresult").innerHTML="";$("hheaders").innerHTML="";$("hdrs").focus();});
 $("copy").addEventListener("click",()=>{
   const msg=$("copied");
   navigator.clipboard.writeText(CMD).then(()=>{msg.textContent="Copiado";},()=>{
@@ -462,32 +491,37 @@ $("copy").addEventListener("click",()=>{
   });
 });
 
-// Modo automático: solo si hay Worker configurado y responde.
-async function analyzeUrl(){
-  const btn=$("fetchbtn"), err=$("fetcherr"); let u=$("url").value.trim();
-  if(!u){ err.textContent="Escribe la dirección de la web."; err.hidden=false; return; }
-  if(!/^https?:\/\//i.test(u)) u="https://"+u;
-  err.hidden=true; btn.disabled=true; btn.textContent="Analizando…";
+// Acepta "fcbarcelona.com", "www.x.com/ruta", "http://…" o "https://…".
+function normalizeUrl(raw){
+  let u=(raw||"").trim().replace(/\s+/g,"");
+  if(!u) return null;
+  if(!/^https?:\/\//i.test(u)) u="https://"+u.replace(/^\/+/,"");
+  try{ const x=new URL(u); if(!x.hostname.includes(".")) return null; return x.toString(); }catch{ return null; }
+}
+async function analyzeUrl(e){
+  if(e) e.preventDefault();
+  const btn=$("fetchbtn"), err=$("fetcherr");
+  const u=normalizeUrl($("url").value);
+  err.hidden=true; $("hresult").innerHTML=""; $("hheaders").innerHTML="";
+  if(!u){ err.textContent="Escribe una dirección web, por ejemplo fcbarcelona.com."; err.hidden=false; $("url").focus(); return; }
+  if(!WORKER_URL){ err.innerHTML='El análisis automático funciona en la versión publicada: <a href="https://robertocifre.github.io/php2shell-check/" target="_blank" rel="noopener">robertocifre.github.io/php2shell-check</a>. Aquí puedes usar «Hacerlo a mano con curl».'; err.hidden=false; return; }
+  btn.disabled=true; btn.textContent="Analizando…";
   try{
     const resp=await fetch(WORKER_URL+"?url="+encodeURIComponent(u),{method:"GET",credentials:"omit",cache:"no-store"});
     const data=await resp.json().catch(()=>({error:"Respuesta no válida del servicio."}));
     if(data.hops&&data.hops.length){
-      $("hdrs").value=hopsToText(data); $("hexbadge").hidden=true; renderH();
-      $("curlcmd").textContent="curl -sIL "+u;
+      const text=hopsToText(data);
+      $("hdrs").value=text; $("curlcmd").textContent="curl -sIL "+u;
+      $("hresult").innerHTML=verdictHTML(evaluateHeaders(text),L2,false);
+      $("hheaders").innerHTML=headersHTML(data.hops);
       if(data.error){ err.textContent=data.error; err.hidden=false; }
-      $("hresult").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"nearest"});
     } else { err.textContent=data.error||"No se pudo analizar la web."; err.hidden=false; }
-  }catch(e){
-    err.textContent="No se pudo contactar con el servicio de análisis. Usa el método manual de abajo."; err.hidden=false;
+  }catch(ex){
+    err.textContent="No se pudo contactar con el servicio de análisis. Vuelve a probar en un momento o usa «Hacerlo a mano con curl»."; err.hidden=false;
   }finally{ btn.disabled=false; btn.textContent="Analizar"; }
 }
-if(WORKER_URL){
-  $("automode").hidden=false;
-  $("manualintro").textContent="¿Prefieres no usar el servicio? Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado.";
-  $("fetchbtn").addEventListener("click",analyzeUrl);
-  $("url").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); analyzeUrl(); } });
-}
-render(); renderH();
+$("urlform").addEventListener("submit",analyzeUrl);
+render();
 </script>
 </body>
 </html>
