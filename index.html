@@ -79,7 +79,6 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
 </style>
 </head>
 <body>
-
 <div class="wrap">
   <header>
     <div class="eyebrow"><span class="cve">CVE-2026-109618</span><span class="cve">CVE-2026-109619</span><span>CVSS 9.2 · publicado 21/10/2026</span></div>
@@ -109,7 +108,7 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
     <p class="muted">Si no tienes acceso al servidor (la web de un proveedor, por ejemplo), solo puedes ver lo que la web enseña desde fuera. Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado. Es una petición normal, como abrir la página.</p>
     <div class="codebox"><pre id="curlcmd">curl -sIL https://www.ejemplo.com/</pre></div>
     <p class="note">Ojo: desde fuera casi nunca se puede confirmar que una web está a salvo. Si aquí sale "no se puede determinar", quien administra el servidor debe usar los pasos 1 y 2.</p>
-    <label for="hdrs" class="muted">Cabeceras de la respuesta</label>
+    <label for="hdrs" class="muted">Pega aquí lo que devuelve el comando (no la dirección de la web)</label>
     <textarea id="hdrs" spellcheck="false" autocomplete="off" style="min-height:150px"></textarea>
     <div class="row"><span class="badge-ex" id="hexbadge">Ejemplo: web que expone su versión de PHP</span></div>
     <div class="row"><button class="btn" id="hcheck" type="button">Analizar cabeceras</button><button class="btn ghost" id="hclear" type="button">Vaciar</button></div>
@@ -291,6 +290,10 @@ content-type: text/html; charset=UTF-8`;
 const DISTRO_BASE = {"8.3.6":"Ubuntu 24.04","8.1.2":"Ubuntu 22.04","7.4.3":"Ubuntu 20.04","7.2.24":"Ubuntu 18.04","8.5.4":"Ubuntu 26.04"};
 function evaluateHeaders(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length===1 && /^(https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i.test(lines[0])){
+    const url=/^https?:\/\//i.test(lines[0])?lines[0]:"https://"+lines[0];
+    return {state:"info",title:"Has pegado la dirección, no las cabeceras",why:"El navegador no puede consultar otras webs por seguridad. Ejecuta este comando en la terminal de tu ordenador (Windows, Mac o Linux) y pega aquí lo que devuelva.",facts:[],fix:["curl -sIL "+url]};
+  }
   const hdr=(n)=>lines.filter(l=>l.toLowerCase().startsWith(n+":")).map(l=>l.slice(n.length+1).trim());
   if(!lines.some(l=>/^HTTP\/[\d.]+\s+\d{3}/i.test(l))) return {state:"info",title:"No reconozco estas cabeceras",why:"Pega la salida completa de curl -sIL. Debe empezar por una línea tipo «HTTP/2 200».",facts:[],fix:[]};
   const powered=hdr("x-powered-by"), server=hdr("server"), cookies=hdr("set-cookie");
@@ -337,7 +340,7 @@ function verdictHTML(v,labels){
       <p class="vtitle">${esc(v.title)}</p>
       <p>${esc(v.why)}</p>
       <dl class="facts">${v.facts.map(([k,val])=>`<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join("")}</dl>
-      ${v.fix.length?`<div><p><strong>Qué hacer</strong></p><ol class="fixlist">${v.fix.map(f=>`<li>${/^(sudo|Consulta)/.test(f)?`<code>${esc(f)}</code>`:esc(f)}</li>`).join("")}</ol></div>`:""}
+      ${v.fix.length?`<div><p><strong>Qué hacer</strong></p><ol class="fixlist">${v.fix.map(f=>`<li>${/^(sudo|Consulta|curl)/.test(f)?`<code>${esc(f)}</code>`:esc(f)}</li>`).join("")}</ol></div>`:""}
     </div>`;
 }
 const hd=document.getElementById("hdrs"); hd.value=HSAMPLE;
