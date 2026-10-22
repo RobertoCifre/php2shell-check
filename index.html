@@ -156,9 +156,8 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
 
   <section class="step" aria-labelledby="s2">
     <div class="step-head"><span class="num">2</span><h2 id="s2">Pega aquí lo que ha devuelto</h2></div>
-    <div class="row"><span class="badge-ex" id="exbadge">Ejemplo: servidor Ubuntu 24.04 sin parchear</span></div>
     <label for="out" class="muted">Salida del comando (empieza por <code>### php2shell-check</code>)</label>
-    <textarea id="out" spellcheck="false" autocomplete="off"></textarea>
+    <textarea id="out" spellcheck="false" autocomplete="off" placeholder="### php2shell-check v2&#10;os=ubuntu 24.04&#10;…"></textarea>
     <div class="row"><button class="btn" id="check" type="button">Comprobar</button><button class="btn ghost" id="clear" type="button">Vaciar</button></div>
     <div id="result" aria-live="polite"></div>
     <div class="privacy"><span aria-hidden="true">🔒</span><span>Este paso se calcula en tu navegador. Lo que pegas no se envía a ningún sitio ni se guarda.</span></div>
@@ -407,8 +406,10 @@ function evaluateHeaders(text){
   if(cookies.some(c=>/^PHPSESSID=/i.test(c))) signals.push("cookie de sesión PHPSESSID");
   if(hdr("x-pingback").length || hdr("link").some(l=>/wp-json/.test(l))) signals.push("cabeceras de WordPress (funciona con PHP)");
   if(hdr("x-generator").some(g=>/drupal|joomla/i.test(g)) || hdr("x-drupal-cache").length) signals.push("cabeceras de Drupal/Joomla (funcionan con PHP)");
-  const facts=[["Respuesta",statuses.join(" → ")],["Server",server.join(" · ")||"no visible"],["X-Powered-By",powered.join(" · ")||"no visible"],["Indicios de PHP",signals.length?signals.join("; "):"ninguno"]];
-  const undecided={state:"info",facts,fix:["Pide a quien administra el servidor que use los pasos 1 y 2 de esta página."]};
+  const facts=[["Respuesta",statuses.join(" → ")]];
+  if(server.length) facts.push(["Server",server.join(" · ")]);
+  facts.push(["X-Powered-By",powered.join(" · ")||"no visible"],["Indicios de PHP",signals.length?signals.join("; "):"ninguno"]);
+  const undecided={state:"info",facts,fix:["Pide a quien administra el servidor que use la comprobación fiable de más abajo."]};
   const last=statuses[statuses.length-1];
   if(!verLine && [403,429,503].includes(last) && (hdr("cf-mitigated").length || server.some(s=>/cloudflare|akamai|sucuri|incapsula/i.test(s))))
     return {...undecided,title:"La web ha bloqueado la consulta automática",why:`Ha respondido ${last} desde su protección anti-bots, así que no se ven sus cabeceras reales. Prueba con curl desde tu ordenador o pide a quien la administra que use los pasos 1 y 2.`};
@@ -469,7 +470,6 @@ function headersHTML(hops){
 }
 
 $("cmd").textContent=CMD;
-$("out").value=SAMPLE;
 $("fixtable").innerHTML=[
   ...Object.entries(UBUNTU).map(([k,u])=>[`Ubuntu ${k}${u.esm?" (solo Ubuntu Pro)":""}`,u.pkg,u.fix]),
   ...Object.values(DEBIAN).map(d=>[d.name,d.pkg,d.fix]),
@@ -478,9 +478,8 @@ $("fixtable").innerHTML=[
 ].map(r=>`<tr><td>${esc(r[0])}</td><td class="v">${esc(r[1])}</td><td class="v">${esc(r[2])}</td></tr>`).join("");
 
 const syncBadge=(ta,badge,sample)=>{$(badge).hidden=$(ta).value.trim()!==sample.trim();};
-$("check").addEventListener("click",()=>{syncBadge("out","exbadge",SAMPLE); render();});
-$("clear").addEventListener("click",()=>{$("out").value="";$("result").innerHTML="";$("exbadge").hidden=true;$("out").focus();});
-$("out").addEventListener("input",()=>syncBadge("out","exbadge",SAMPLE));
+$("check").addEventListener("click",render);
+$("clear").addEventListener("click",()=>{$("out").value="";$("result").innerHTML="";$("out").focus();});
 $("hcheck").addEventListener("click",renderH);
 $("hclear").addEventListener("click",()=>{$("hdrs").value="";$("hresult").innerHTML="";$("hheaders").innerHTML="";$("hdrs").focus();});
 $("copy").addEventListener("click",()=>{
@@ -521,7 +520,6 @@ async function analyzeUrl(e){
   }finally{ btn.disabled=false; btn.textContent="Analizar"; }
 }
 $("urlform").addEventListener("submit",analyzeUrl);
-render();
 </script>
 </body>
 </html>
