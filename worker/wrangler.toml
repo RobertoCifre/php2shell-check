@@ -1,0 +1,28 @@
+# Worker del Comprobador PHP2Shell. Sin account_id ni tokens: el repo es público.
+# Despliegue: npx wrangler@4 login && npx wrangler@4 deploy   (requiere Wrangler >= 4.36)
+name = "php2shell-check"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Sin registros: la página promete que no se guarda nada.
+[observability]
+enabled = false
+
+# 10 consultas por minuto por IP (por centro de datos de Cloudflare).
+[[ratelimits]]
+name = "PER_IP"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+# Tope total del Worker: 120 consultas por minuto por centro de datos.
+[[ratelimits]]
+name = "GLOBAL"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 120
+  period = 60
