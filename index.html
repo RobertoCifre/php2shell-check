@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://php2shell-check.gomila-unico.workers.dev; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Comprueba si tu servidor está afectado por las vulnerabilidades críticas de PHP CVE-2026-109618 y CVE-2026-109619 y cómo parchearlo.">
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
@@ -131,7 +131,7 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
       <label for="url" class="muted">Dirección de la web</label>
       <div class="row"><input type="url" id="url" placeholder="https://www.ejemplo.com/" autocomplete="off" spellcheck="false"><button class="btn" id="fetchbtn" type="button">Analizar</button></div>
       <p id="fetcherr" class="err" aria-live="polite" hidden></p>
-      <p class="note">Al pulsar Analizar, la dirección pasa por un servicio propio que pide a esa web solo sus cabeceras (no el contenido), como haría un navegador. No guarda nada.</p>
+      <p class="note">Al pulsar Analizar, la dirección pasa por un servicio propio que pide a esa web solo sus cabeceras (no el contenido), como haría un navegador. No guarda nada. Este modo no puede ver la cabecera <code>Server</code>; si la necesitas, usa el comando de abajo.</p>
     </div>
     <p class="muted" id="manualintro">Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado. Es una petición normal, como abrir la página.</p>
     <div class="codebox"><pre id="curlcmd">curl -sIL https://www.ejemplo.com/</pre></div>
@@ -168,7 +168,7 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
 <script>
 "use strict";
 // Dirección del Worker de Cloudflare para el modo automático. Vacía = solo modo manual.
-const WORKER_URL = "";
+const WORKER_URL = "https://php2shell-check.gomila-unico.workers.dev";
 
 const CMD = `echo "### php2shell-check v2"
 ( . /etc/os-release 2>/dev/null; echo "os=$ID $VERSION_ID" )

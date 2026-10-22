@@ -7,7 +7,8 @@ const USER_AGENT = "php2shell-check/1.0 (+https://robertocifre.github.io/php2she
 const MAX_HOPS = 5;
 const TIMEOUT_MS = 8000;
 // Cabeceras útiles para el análisis; el resto no se devuelve.
-const KEEP = new Set(["server", "x-powered-by", "set-cookie", "x-pingback", "link", "x-generator", "x-drupal-cache",
+// "server" no se incluye: el runtime de Workers la sustituye siempre por "cloudflare" (comprobado 22/10/2026).
+const KEEP = new Set(["x-powered-by", "set-cookie", "x-pingback", "link", "x-generator", "x-drupal-cache",
   "via", "location", "content-type", "cf-mitigated", "x-cache"]);
 
 function cors(origin) {
