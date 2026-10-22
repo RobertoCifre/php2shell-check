@@ -115,7 +115,7 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
     <h2 id="s5" class="sr-only">Comprobar una web</h2>
     <form id="urlform" class="urlrow" novalidate>
       <label for="url" class="sr-only">Dirección de la web</label>
-      <input type="text" id="url" inputmode="url" placeholder="fcbarcelona.com" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+      <input type="text" id="url" inputmode="url" placeholder="Escribe una web, por ejemplo tuempresa.com" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
       <button class="btn big" id="fetchbtn" type="submit">Analizar</button>
     </form>
     <p id="fetcherr" class="err" aria-live="polite" hidden></p>
@@ -490,7 +490,7 @@ $("copy").addEventListener("click",()=>{
   });
 });
 
-// Acepta "fcbarcelona.com", "www.x.com/ruta", "http://…" o "https://…".
+// Acepta "ejemplo.com", "www.x.com/ruta", "http://…" o "https://…".
 function normalizeUrl(raw){
   let u=(raw||"").trim().replace(/\s+/g,"");
   if(!u) return null;
@@ -502,7 +502,7 @@ async function analyzeUrl(e){
   const btn=$("fetchbtn"), err=$("fetcherr");
   const u=normalizeUrl($("url").value);
   err.hidden=true; $("hresult").innerHTML=""; $("hheaders").innerHTML="";
-  if(!u){ err.textContent="Escribe una dirección web, por ejemplo fcbarcelona.com."; err.hidden=false; $("url").focus(); return; }
+  if(!u){ err.textContent="Escribe una dirección web, por ejemplo tuempresa.com."; err.hidden=false; $("url").focus(); return; }
   if(!WORKER_URL){ err.innerHTML='El análisis automático funciona en la versión publicada: <a href="https://robertocifre.github.io/php2shell-check/" target="_blank" rel="noopener">robertocifre.github.io/php2shell-check</a>. Aquí puedes usar «Hacerlo a mano con curl».'; err.hidden=false; return; }
   btn.disabled=true; btn.textContent="Analizando…";
   try{
