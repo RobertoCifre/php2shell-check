@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Comprueba si tu servidor está afectado por las vulnerabilidades críticas de PHP CVE-2026-109618 y CVE-2026-109619. Todo se evalúa en tu navegador.">
-<style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Comprueba si tu servidor está afectado por las vulnerabilidades críticas de PHP CVE-2026-109618 y CVE-2026-109619 y cómo parchearlo.">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 <title>Comprobador PHP2Shell</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: hoja de aviso de seguridad. Columna de lectura + dos pasos (comando → resultado). */
+/* Layout: hoja de aviso de seguridad. Columna de lectura + pasos (comando → resultado). Fuentes del sistema: la página no carga nada de fuera. */
 :root{
   --bg:#F5F6F8; --surface:#FFFFFF; --fg:#16202A; --muted:#566373; --line:#D9DEE5;
   --accent:#2747C4; --accent-ink:#FFFFFF; --code-bg:#EEF1F6;
   --bad:#B42318; --bad-bg:#FDECEA; --warn:#9A5B00; --warn-bg:#FFF4E0;
   --ok:#1E7A46; --ok-bg:#E6F4EC; --info:#4A5565; --info-bg:#EEF0F3;
-  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --f-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
-  --f-mono:"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --f-display:"Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Roboto,Ubuntu,"Noto Sans",sans-serif;
+  --f-body:"Segoe UI Variable Text","Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Roboto,Ubuntu,"Noto Sans",sans-serif;
+  --f-mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0F151C; --surface:#161E27; --fg:#E6EAF0; --muted:#9AA6B4; --line:#2A3542;
@@ -34,25 +34,30 @@
 body{background:var(--bg);color:var(--fg);font:400 17px/1.55 var(--f-body)}
 .wrap{max-width:860px;margin:0 auto;padding-block:40px 64px;
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));
-  display:flex;flex-direction:column;gap:36px}
+  display:flex;flex-direction:column;gap:40px}
 header{display:flex;flex-direction:column;gap:12px}
-.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .cve{border:1px solid var(--line);padding:4px 8px;border-radius:4px;background:var(--surface)}
-h1{font:800 clamp(34px,6vw,56px)/1.02 var(--f-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1{font:700 clamp(32px,6vw,54px)/1.05 var(--f-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
 .lede{font-size:19px;color:var(--muted);max-width:62ch;margin:0}
+.byline{font-size:15px;color:var(--muted);display:flex;gap:6px 14px;flex-wrap:wrap}
 h2{font:600 24px/1.2 var(--f-display);margin:0;text-wrap:balance}
 .step{display:flex;flex-direction:column;gap:14px}
 .step-head{display:flex;align-items:baseline;gap:12px}
 .num{font:600 14px/1 var(--f-mono);color:var(--accent-ink);background:var(--accent);border-radius:999px;width:28px;height:28px;display:inline-grid;place-items:center;flex:none}
 p{margin:0;max-width:65ch}
 .muted{color:var(--muted)}
-.codebox{position:relative;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;min-width:0}
-.codebox pre{margin:0;padding:16px 16px 16px 16px;overflow-x:auto;font:400 13.5px/1.6 var(--f-mono);white-space:pre}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+.codebox{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;min-width:0}
+.codebox pre{margin:0;padding:16px;overflow-x:auto;font:400 13.5px/1.6 var(--f-mono);white-space:pre}
 .btn{font:600 15px/1 var(--f-body);border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:10px 16px;border-radius:6px;cursor:pointer}
 .btn.ghost{background:transparent;color:var(--accent)}
-.btn:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn:focus-visible,textarea:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-textarea{width:100%;min-height:190px;resize:vertical;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:14px;font:400 13.5px/1.55 var(--f-mono)}
+textarea,input[type=url]{width:100%;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font:400 13.5px/1.55 var(--f-mono)}
+textarea{min-height:190px;resize:vertical}
+input[type=url]{font-size:15px;flex:1 1 280px;width:auto;min-width:0}
 .badge-ex{font:500 12px/1 var(--f-mono);color:var(--warn);background:var(--warn-bg);padding:4px 8px;border-radius:4px}
 .verdict{border:1px solid var(--line);border-left-width:6px;border-radius:8px;background:var(--surface);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .verdict.bad{border-left-color:var(--bad)} .verdict.warn{border-left-color:var(--warn)}
@@ -63,7 +68,7 @@ textarea{width:100%;min-height:190px;resize:vertical;background:var(--surface);c
 .vtitle{font:600 22px/1.25 var(--f-display);margin:0}
 dl.facts{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:15px}
 dl.facts dt{color:var(--muted)} dl.facts dd{margin:0;font-family:var(--f-mono);font-size:13.5px;overflow-wrap:anywhere;min-width:0}
-.fixlist{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.fixlist{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:15px}
 th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -71,9 +76,13 @@ th{font:600 12px/1.2 var(--f-mono);letter-spacing:.06em;text-transform:uppercase
 td.v{font-family:var(--f-mono);font-size:13.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
 tr:last-child td{border-bottom:0}
 .note{font-size:15px;color:var(--muted)}
+details{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:12px 16px}
+summary{cursor:pointer;font-weight:600}
+details ul{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}
 .privacy{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.err{color:var(--bad);font-size:15px}
 a{color:var(--accent)}
-footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:18px}
+footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:18px}
 @media (max-width:520px){dl.facts{grid-template-columns:1fr} dl.facts dt{margin-top:6px}}
 @media (prefers-reduced-motion:no-preference){.verdict{transition:border-color .2s}}
 </style>
@@ -83,14 +92,26 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
   <header>
     <div class="eyebrow"><span class="cve">CVE-2026-109618</span><span class="cve">CVE-2026-109619</span><span>CVSS 9.2 · publicado 21/10/2026</span></div>
     <h1>¿Tu servidor tiene que parchear PHP?</h1>
-    <p class="lede">Dos fallos críticos de PHP permiten ejecutar código en el servidor sin contraseña. Desde fuera no se puede saber si un servidor está parcheado: muchas distribuciones corrigen el fallo sin cambiar el número de versión. Esta página lo comprueba con los datos de tu propio servidor, en dos pasos.</p>
+    <p class="lede">Dos fallos críticos de PHP permiten ejecutar código en el servidor sin contraseña. Desde fuera no se puede saber si un servidor está parcheado: muchas distribuciones corrigen el fallo sin cambiar el número de versión. Esta página lo comprueba con los datos de tu propio servidor.</p>
+    <div class="byline"><span>Hecho por <a href="https://github.com/RobertoCifre" target="_blank" rel="noopener">Roberto Cifre</a></span><span>Datos verificados el 22/10/2026</span><span><a href="https://github.com/RobertoCifre/php2shell-check" target="_blank" rel="noopener">Código fuente</a></span></div>
   </header>
 
   <section class="step" aria-labelledby="s1">
     <div class="step-head"><span class="num">1</span><h2 id="s1">Ejecuta este comando en tu servidor</h2></div>
-    <p class="muted">Solo lee información: qué paquetes de PHP hay instalados y si PHP está atendiendo peticiones web. No modifica nada. Funciona en Debian, Ubuntu, RHEL, Rocky, Alma, Amazon Linux y contenedores Docker con PHP.</p>
+    <p class="muted">Solo lee información: qué PHP hay instalado, si está atendiendo peticiones web y si quedó algún proceso con la versión antigua. No modifica nada. Ejecútalo con <code>sudo</code> para que pueda ver todos los procesos.</p>
     <div class="codebox"><pre id="cmd"></pre></div>
     <div class="row"><button class="btn" id="copy" type="button">Copiar comando</button><span id="copied" class="muted" aria-live="polite"></span></div>
+    <details>
+      <summary>Qué hace cada línea</summary>
+      <ul>
+        <li><code>os-release</code>: nombre y versión del sistema (Ubuntu 24.04, Debian 12…).</li>
+        <li><code>dpkg-query</code> / <code>rpm -qa</code>: versión exacta de los paquetes de PHP instalados.</li>
+        <li><code>php -r</code>: versión del PHP de la línea de comandos, por si está compilado a mano.</li>
+        <li><code>apache2ctl -M</code>, <code>pgrep</code>: si Apache tiene cargado PHP o si hay PHP-FPM, LiteSpeed o FrankenPHP en marcha.</li>
+        <li><code>/proc/*/maps</code>: cuántos procesos siguen usando una librería de PHP ya borrada, es decir, que no se reiniciaron tras actualizar.</li>
+        <li><code>docker ps</code>: si hay contenedores con PHP, cuya versión no se ve desde fuera del contenedor.</li>
+      </ul>
+    </details>
   </section>
 
   <section class="step" aria-labelledby="s2">
@@ -100,15 +121,21 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
     <textarea id="out" spellcheck="false" autocomplete="off"></textarea>
     <div class="row"><button class="btn" id="check" type="button">Comprobar</button><button class="btn ghost" id="clear" type="button">Vaciar</button></div>
     <div id="result" aria-live="polite"></div>
-    <div class="privacy"><span aria-hidden="true">🔒</span><span>La comprobación se hace en tu navegador. Lo que pegas no se envía a ningún sitio ni se guarda.</span></div>
+    <div class="privacy"><span aria-hidden="true">🔒</span><span>Este paso se calcula en tu navegador. Lo que pegas no se envía a ningún sitio ni se guarda.</span></div>
   </section>
 
   <section class="step" aria-labelledby="s5">
     <h2 id="s5">¿Y una web que no es tuya?</h2>
-    <p class="muted">Si no tienes acceso al servidor (la web de un proveedor, por ejemplo), solo puedes ver lo que la web enseña desde fuera. Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado. Es una petición normal, como abrir la página.</p>
+    <p class="muted">Si no tienes acceso al servidor (la web de un proveedor, por ejemplo), solo puedes ver lo que la web enseña desde fuera. Desde fuera casi nunca se puede confirmar que una web está a salvo: si sale "no se puede determinar", quien administra el servidor debe usar los pasos 1 y 2.</p>
+    <div id="automode" class="step" hidden>
+      <label for="url" class="muted">Dirección de la web</label>
+      <div class="row"><input type="url" id="url" placeholder="https://www.ejemplo.com/" autocomplete="off" spellcheck="false"><button class="btn" id="fetchbtn" type="button">Analizar</button></div>
+      <p id="fetcherr" class="err" aria-live="polite" hidden></p>
+      <p class="note">Al pulsar Analizar, la dirección pasa por un servicio propio que pide a esa web solo sus cabeceras (no el contenido), como haría un navegador. No guarda nada.</p>
+    </div>
+    <p class="muted" id="manualintro">Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado. Es una petición normal, como abrir la página.</p>
     <div class="codebox"><pre id="curlcmd">curl -sIL https://www.ejemplo.com/</pre></div>
-    <p class="note">Ojo: desde fuera casi nunca se puede confirmar que una web está a salvo. Si aquí sale "no se puede determinar", quien administra el servidor debe usar los pasos 1 y 2.</p>
-    <label for="hdrs" class="muted">Pega aquí lo que devuelve el comando (no la dirección de la web)</label>
+    <label for="hdrs" class="muted">Cabeceras de la respuesta (no la dirección de la web)</label>
     <textarea id="hdrs" spellcheck="false" autocomplete="off" style="min-height:150px"></textarea>
     <div class="row"><span class="badge-ex" id="hexbadge">Ejemplo: web que expone su versión de PHP</span></div>
     <div class="row"><button class="btn" id="hcheck" type="button">Analizar cabeceras</button><button class="btn ghost" id="hclear" type="button">Vaciar</button></div>
@@ -117,12 +144,12 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
 
   <section class="step" aria-labelledby="s3">
     <h2 id="s3">Versiones que corrigen el fallo</h2>
-    <p class="muted">Si tu PHP es de la distribución, mira el número del paquete, no el que muestra <code>php -v</code>.</p>
+    <p class="muted">Si tu PHP es de la distribución, mira el número del paquete, no el que muestra <code>php -v</code>. Las dos CVE se corrigen con las mismas versiones.</p>
     <div class="tablewrap"><table>
       <thead><tr><th>Origen de PHP</th><th>Paquete</th><th>Versión corregida</th></tr></thead>
       <tbody id="fixtable"></tbody>
     </table></div>
-    <p class="note">Si después de actualizar usas Apache con mod_php, reinicia Apache. Si usas PHP-FPM, reinicia el servicio php-fpm. Hasta entonces sigue en memoria el PHP antiguo.</p>
+    <p class="note">Después de actualizar, reinicia Apache si usas mod_php, o el servicio php-fpm si usas FPM. Hasta entonces sigue en memoria el PHP antiguo.</p>
   </section>
 
   <section class="step" aria-labelledby="s4">
@@ -133,33 +160,42 @@ footer{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:
   </section>
 
   <footer>
-    <span>Datos verificados el 22/10/2026 en <a href="https://ubuntu.com/security/CVE-2026-109618" target="_blank" rel="noopener">ubuntu.com/security</a>, <a href="https://security-tracker.debian.org/tracker/CVE-2026-109618" target="_blank" rel="noopener">security-tracker.debian.org</a> y el análisis de <a href="https://www.rapid7.com/blog/post/etr-cve-2026-109618-and-cve-2026-109619-critical-unauthenticated-remote-code-execution-in-php/" target="_blank" rel="noopener">Rapid7</a>.</span>
-    <span>Orientativo: si tu caso sale como "Revisar", consulta el aviso de seguridad de tu distribución o proveedor.</span>
+    <span>Fuentes, consultadas el 22/10/2026: <a href="https://ubuntu.com/security/CVE-2026-109618" target="_blank" rel="noopener">Ubuntu</a>, <a href="https://security-tracker.debian.org/tracker/CVE-2026-109618" target="_blank" rel="noopener">Debian</a>, <a href="https://www.php.net/releases/" target="_blank" rel="noopener">php.net</a> y el análisis de <a href="https://www.rapid7.com/blog/post/etr-cve-2026-109618-and-cve-2026-109619-critical-unauthenticated-remote-code-execution-in-php/" target="_blank" rel="noopener">Rapid7</a>.</span>
+    <span>Herramienta orientativa y sin garantía. Si tu caso sale como "Revisar", consulta el aviso de seguridad de tu distribución o proveedor. Código abierto con licencia MIT.</span>
   </footer>
 </div>
 
 <script>
 "use strict";
-const CMD = `echo "### php2shell-check v1"
+// Dirección del Worker de Cloudflare para el modo automático. Vacía = solo modo manual.
+const WORKER_URL = "";
+
+const CMD = `echo "### php2shell-check v2"
 ( . /etc/os-release 2>/dev/null; echo "os=$ID $VERSION_ID" )
+echo "uid=$(id -u)"
 dpkg-query -W -f='\${Status}|\${Package}|\${Version}\\n' 'php*' 'libapache2-mod-php*' 2>/dev/null \\
   | awk -F'|' '$1 ~ /install ok installed/ {print "pkg="$2"="$3}' | grep -E '=(php[0-9.]*-(common|fpm|cgi)|libapache2-mod-php[0-9.]+)='
 rpm -qa --qf 'pkg=%{NAME}=%{VERSION}-%{RELEASE}\\n' 'php*-common' 'php-common' 'ea-php*-php-common' 2>/dev/null
 echo "phpv=$(php -r 'echo PHP_VERSION;' 2>/dev/null)"
 echo "mods=$( (apache2ctl -M || httpd -M) 2>/dev/null | grep -Eo 'php[0-9_]*_module' | tr '\\n' ' ')"
 echo "fpm=$(pgrep -a php-fpm 2>/dev/null | grep -Eo 'php-fpm[0-9.]*' | head -1)"
-echo "other=$(pgrep -a 'lsphp|frankenphp|php-cgi' 2>/dev/null | grep -Eo 'lsphp|frankenphp|php-cgi' | sort -u | tr '\\n' ' ')"`;
+echo "other=$(pgrep -a 'lsphp|frankenphp|php-cgi' 2>/dev/null | grep -Eo 'lsphp|frankenphp|php-cgi' | sort -u | tr '\\n' ' ')"
+echo "stale=$(grep -l 'php.*(deleted)' /proc/[0-9]*/maps 2>/dev/null | wc -l)"
+echo "containers=$(docker ps --format '{{.Image}}' 2>/dev/null | grep -ci php)"`;
 
-const SAMPLE = `### php2shell-check v1
+const SAMPLE = `### php2shell-check v2
 os=ubuntu 24.04
+uid=0
 pkg=php8.3-common=8.3.6-0ubuntu0.24.04.12
 pkg=libapache2-mod-php8.3=8.3.6-0ubuntu0.24.04.12
 phpv=8.3.6
 mods=php_module
 fpm=
-other=`;
+other=
+stale=0
+containers=0`;
 
-// Versiones corregidas (fuentes en el pie). ESM = solo con Ubuntu Pro.
+// Versiones corregidas, iguales para las dos CVE (fuentes en el pie). ESM = solo con Ubuntu Pro.
 const UBUNTU = {
   "14.04": {pkg:"php5",  fix:"5.5.9+dfsg-1ubuntu4.29+esm18", esm:true},
   "16.04": {pkg:"php7.0",fix:"7.0.33-0ubuntu0.16.04.16+esm22", esm:true},
@@ -176,7 +212,7 @@ const DEBIAN = {
 };
 const UPSTREAM = {"8.2":"8.2.35","8.3":"8.3.36","8.4":"8.4.27","8.5":"8.5.12"};
 
-// Comparación de versiones Debian (algoritmo de dpkg: epoch, upstream, revision; '~' ordena antes que nada).
+// Comparación de versiones Debian (algoritmo de dpkg: epoch, upstream, revisión; '~' ordena antes que nada).
 function order(c){ if(c==="~")return -1; if(/\d/.test(c))return 0; if(!c)return 0; if(/[A-Za-z]/.test(c))return c.charCodeAt(0); return c.charCodeAt(0)+256; }
 function verrevcmp(a,b){
   let i=0,j=0;
@@ -200,102 +236,137 @@ function dpkgCmp(x,y){
   if(e1!==e2) return e1-e2;
   return verrevcmp(u1,u2) || verrevcmp(r1,r2);
 }
-function upstreamOf(v){ const m=v.replace(/^\d+:/,"").match(/^(\d+\.\d+\.\d+)/); return m?m[1]:null; }
+function upstreamOf(v){ const m=(v||"").replace(/^\d+:/,"").match(/^(\d+\.\d+\.\d+)/); return m?m[1]:null; }
 function branchOf(v){ const m=(v||"").match(/^(\d+)\.(\d+)/); return m?m[1]+"."+m[2]:null; }
 
 function parse(text){
-  const r={os:"",id:"",ver:"",pkgs:[],phpv:"",mods:"",fpm:"",other:"",valid:/###\s*php2shell-check/.test(text)};
+  const r={os:"",id:"",ver:"",uid:"",pkgs:[],phpv:"",mods:"",fpm:"",other:"",stale:"",containers:"",valid:/###\s*php2shell-check\s+v[12]\b/.test(text)};
   for(const raw of text.split(/\r?\n/)){
     const line=raw.trim(); const k=line.indexOf("="); if(k<0) continue;
     const key=line.slice(0,k), val=line.slice(k+1).trim();
     if(key==="os"){ r.os=val; [r.id,r.ver]=[val.split(" ")[0]||"", val.split(" ")[1]||""]; }
     else if(key==="pkg"){ const p=val.indexOf("="); if(p>0) r.pkgs.push({name:val.slice(0,p),ver:val.slice(p+1)}); }
-    else if(key in r) r[key]=val;
+    else if(key in r && key!=="pkgs" && key!=="valid") r[key]=val;
   }
   return r;
 }
 
-// Devuelve {state:'bad'|'warn'|'ok'|'info', title, why, fix[]}
+// Agrupa los paquetes por rama de PHP (8.3, 7.4...). Ignora el metapaquete php-common de Debian/Ubuntu.
+function branches(pkgs){
+  const map={};
+  for(const p of pkgs){
+    let br=null, m;
+    if((m=p.name.match(/^php(\d+\.\d+)-/))) br=m[1];
+    else if((m=p.name.match(/^libapache2-mod-php(\d+\.\d+)$/))) br=m[1];
+    else if((m=p.name.match(/^ea-php(\d)(\d+)-/))) br=m[1]+"."+m[2];
+    else if(p.name==="php-common" && !/ubuntu|deb/.test(p.ver)) br=branchOf(p.ver.replace(/^\d+:/,""));
+    if(!br) continue;
+    // Para cada rama vale la versión del paquete -common; si no, la del módulo de Apache.
+    if(!map[br] || /-common$/.test(p.name)) map[br]=p;
+  }
+  return map;
+}
+
+// Evalúa una rama. Devuelve {state:'vuln'|'ok'|'review', why, fix?, esm?}
+function judgeBranch(br,pkg,r){
+  const sury=/deb\.sury\.org/.test(pkg.ver);
+  const compiled=pkg.name==="php"; // solo hay php -v, sin paquete: PHP oficial compilado o de otra fuente
+  if(r.id==="ubuntu" && !sury && !compiled){
+    const u=UBUNTU[r.ver];
+    if(!u) return {state:"review",why:`PHP ${br}: no tengo verificada la versión corregida para Ubuntu ${r.ver}.`};
+    if(u.pkg!=="php"+br) return {state:"review",why:`PHP ${br} (${pkg.ver}) no es el PHP oficial de Ubuntu ${r.ver}; consulta el aviso de quien lo distribuye.`};
+    const vuln=dpkgCmp(pkg.ver,u.fix)<0;
+    return {state:vuln?"vuln":"ok",esm:vuln&&u.esm,why:`PHP ${br}: paquete ${pkg.ver}${vuln?", anterior a la versión corregida "+u.fix:", ya incluye la corrección"}.`,
+      fix:`sudo apt update && sudo apt install --only-upgrade $(dpkg-query -W -f='\${Package}\\n' 'php${br}*' 'libapache2-mod-php${br}' 2>/dev/null)`};
+  }
+  if(r.id==="debian" && !sury && !compiled){
+    const d=DEBIAN[r.ver.split(".")[0]];
+    if(!d) return {state:"review",why:`PHP ${br}: no hay versión corregida verificada para Debian ${r.ver}. Debian 11 no aparece en el tracker de seguridad.`};
+    if(d.pkg!=="php"+br) return {state:"review",why:`PHP ${br} (${pkg.ver}) no es el PHP oficial de ${d.name}; consulta el aviso de quien lo distribuye.`};
+    const vuln=dpkgCmp(pkg.ver,d.fix)<0;
+    return {state:vuln?"vuln":"ok",why:`PHP ${br}: paquete ${pkg.ver}${vuln?", anterior a la versión corregida de "+d.name+" ("+d.fix+")":", ya incluye la corrección"}.`,
+      fix:`sudo apt update && sudo apt install --only-upgrade $(dpkg-query -W -f='\${Package}\\n' 'php${br}*' 'libapache2-mod-php${br}' 2>/dev/null)`};
+  }
+  // PHP oficial, repositorio de Ondřej Surý, Remi, EasyApache...: comparar con las versiones de php.net
+  const v=upstreamOf(pkg.ver), fixed=UPSTREAM[br];
+  const rpmDistro=/\.(el\d|amzn\d|fc\d)/.test(pkg.ver);
+  if(!v) return {state:"review",why:`PHP ${br}: no reconozco la versión ${pkg.ver}.`};
+  if(!fixed){
+    if(rpmDistro) return {state:"review",why:`PHP ${br} (${pkg.ver}): rama sin parche oficial; tu distribución puede mantenerla por su cuenta. Consulta su aviso.`};
+    return {state:"vuln",why:`PHP ${br} (${pkg.ver}): esta rama ya no recibe parches oficiales. Pasa a PHP 8.2 o superior.`,fix:"Actualiza a una rama soportada (8.2, 8.3, 8.4 o 8.5)."};
+  }
+  const vuln=dpkgCmp(v,fixed)<0;
+  if(vuln && rpmDistro) return {state:"review",why:`PHP ${br}: ${v} es anterior a ${fixed}, pero algunas distribuciones RPM aplican el parche sin cambiar la versión. Consulta su aviso.`,fix:"sudo dnf upgrade 'php*'   # o yum en sistemas antiguos"};
+  let fix="sudo dnf upgrade 'php*'   # o el gestor de paquetes de tu sistema";
+  if(sury) fix=`sudo apt update && sudo apt install --only-upgrade $(dpkg-query -W -f='\${Package}\\n' 'php${br}*' 'libapache2-mod-php${br}' 2>/dev/null)`;
+  else if(/^ea-php/.test(pkg.name)) fix="sudo yum update 'ea-php*'   # o desde cPanel → EasyApache 4";
+  return {state:vuln?"vuln":"ok",why:`PHP ${br}: ${v}${vuln?", anterior a la versión corregida "+fixed:", ya incluye la corrección ("+fixed+" o posterior)"}.`,fix};
+}
+
+// Devuelve {state:'bad'|'warn'|'ok'|'info', title, why, facts, fix[]}
 function evaluate(r){
   const serving=[r.mods&&"Apache con mod_php", r.fpm&&"PHP-FPM", r.other&&r.other].filter(Boolean);
-  const res={facts:[["Sistema",r.os||"no detectado"],["PHP sirviendo web",serving.length?serving.join(", "):"no"]]};
-  const common=r.pkgs.filter(p=>/^(php[0-9.]*-common|php-common|ea-php\d+-php-common)$/.test(p.name)&&!/^\d+:\d+ubuntu|^2:\d+(\+|$)/.test(p.ver));
-  const modpkg=r.pkgs.find(p=>/^libapache2-mod-php[0-9.]+$/.test(p.name));
-  const pkg=common[0]||modpkg;
-  if(pkg) res.facts.push(["Paquete PHP",pkg.name+" "+pkg.ver]);
-  if(r.phpv) res.facts.push(["php -v",r.phpv]);
+  const stale=parseInt(r.stale,10)||0, containers=parseInt(r.containers,10)||0, root=r.uid==="0";
+  const facts=[["Sistema",r.os||"no detectado"],["PHP sirviendo web",serving.length?serving.join(", "):"no"]];
+  if(r.stale!=="") facts.push(["Procesos con PHP antiguo",String(stale)+(root?"":" (sin sudo, puede que no los vea todos)")]);
+  if(containers) facts.push(["Contenedores con PHP",String(containers)]);
+  if(!r.valid) return {state:"info",title:"No reconozco esta salida",why:"Pega el resultado completo del comando del paso 1. Debe empezar por «### php2shell-check».",facts:[],fix:[]};
 
-  if(!r.valid){ return {...res,state:"info",title:"No reconozco esta salida",why:"Pega el resultado completo del comando del paso 1. Debe empezar por «### php2shell-check v1».",fix:[]}; }
-  if(!pkg && !r.phpv){ return {...res,state:"ok",title:"No hay PHP en este servidor",why:"No se encontró ningún paquete ni binario de PHP. Estos fallos no te afectan aquí.",fix:[]}; }
-
-  let vulnerable=null, why="", fix=[], restart=[];
+  const restart=[];
   if(r.mods) restart.push("sudo systemctl restart apache2   # o httpd en RHEL/Amazon Linux");
   if(r.fpm) restart.push("sudo systemctl restart "+r.fpm.replace(/^php-fpm/,"php")+"-fpm   # ajusta al nombre de tu servicio");
-  const sury = pkg && /deb\.sury\.org/.test(pkg.ver);
+  const dockerHint="Comprueba la versión dentro de cada contenedor: docker exec <contenedor> php -r 'echo PHP_VERSION;' y compárala con la tabla de abajo.";
 
-  if(pkg && r.id==="ubuntu" && !sury){
-    const u=UBUNTU[r.ver];
-    if(!u){ return {...res,state:"info",title:"Revisa el aviso de tu versión de Ubuntu",why:`No tengo verificada la versión corregida para Ubuntu ${r.ver}.`,fix:["Consulta https://ubuntu.com/security/CVE-2026-109618"]}; }
-    vulnerable = dpkgCmp(pkg.ver,u.fix) < 0;
-    why = vulnerable ? `Tu paquete (${pkg.ver}) es anterior a la versión corregida ${u.fix}.` : `Tu paquete ya incluye la corrección (${u.fix} o posterior).`;
-    if(vulnerable){
-      if(u.esm) fix.push("Esta versión de Ubuntu ya no tiene soporte estándar: el parche solo está en Ubuntu Pro (ESM). Actívalo con «sudo pro attach» o actualiza a una LTS soportada.");
-      fix.push(`sudo apt update && sudo apt install --only-upgrade $(dpkg-query -W -f='\${Package}\\n' '${u.pkg}*' 'libapache2-mod-${u.pkg}' 2>/dev/null)`);
-    }
-  } else if(pkg && r.id==="debian" && !sury){
-    const d=DEBIAN[r.ver.split(".")[0]];
-    if(!d){ return {...res,state:"info",title:"Revisa el aviso de tu versión de Debian",why:`No hay versión corregida verificada para Debian ${r.ver}. Debian 11 (bullseye) no aparece en el tracker.`,fix:["Consulta https://security-tracker.debian.org/tracker/CVE-2026-109618"]}; }
-    vulnerable = dpkgCmp(pkg.ver,d.fix) < 0;
-    why = vulnerable ? `Tu paquete (${pkg.ver}) es anterior a la versión corregida de ${d.name}: ${d.fix}.` : `Tu paquete ya incluye la corrección de ${d.name}.`;
-    if(vulnerable) fix.push(`sudo apt update && sudo apt install --only-upgrade $(dpkg-query -W -f='\${Package}\\n' '${d.pkg}*' 'libapache2-mod-${d.pkg}' 2>/dev/null)`);
-  } else {
-    // PHP oficial, repositorio de Ondřej Surý, Remi, EasyApache, Docker...: comparar con las versiones de php.net
-    const v = (pkg && upstreamOf(pkg.ver)) || upstreamOf(r.phpv);
-    const br = branchOf(v);
-    if(!v){ return {...res,state:"info",title:"No puedo leer la versión de PHP",why:"No se encontró una versión reconocible en la salida.",fix:[]}; }
-    const fixed = UPSTREAM[br];
-    const rpmDistro = pkg && /\.(el\d|amzn\d|fc\d)/.test(pkg.ver);
-    if(!fixed){
-      vulnerable = true;
-      why = `La rama PHP ${br} ya no recibe parches oficiales. Si tu distribución la mantiene, consulta su aviso; si no, actualiza a PHP 8.2 o superior.`;
-    } else {
-      vulnerable = dpkgCmp(v,fixed) < 0;
-      why = vulnerable ? `Tu PHP ${v} es anterior a la versión corregida ${fixed}.` : `Tu PHP ${v} ya incluye la corrección (${fixed} o posterior).`;
-    }
-    if(vulnerable && rpmDistro){
-      return {...res,state:"info",title:"Revisa el aviso de tu distribución",why:why+" Algunas distribuciones RPM aplican el parche sin cambiar la versión, así que el número solo no basta.",fix:["sudo dnf upgrade 'php*'   # o yum en sistemas antiguos","Comprueba en el aviso de seguridad de tu distribución qué paquete corrige CVE-2026-109618."].concat(restart)};
-    }
-    if(vulnerable){
-      if(sury) fix.push(`sudo apt update && sudo apt install --only-upgrade $(dpkg-query -W -f='\${Package}\\n' 'php${br}*' 'libapache2-mod-php${br}' 2>/dev/null)`);
-      else if(pkg && /^ea-php/.test(pkg.name)) fix.push("Actualiza el perfil de EasyApache (cPanel → EasyApache 4) o ejecuta: sudo yum update 'ea-php*'");
-      else if(!pkg) fix.push(`Si es un contenedor, reconstruye la imagen con php:${fixed} o posterior.`);
-      else fix.push("sudo dnf upgrade 'php*'   # o el gestor de paquetes de tu sistema");
-    }
+  const map=branches(r.pkgs);
+  const list=Object.entries(map);
+  if(!list.length && r.phpv) list.push([branchOf(r.phpv)||"?",{name:"php",ver:r.phpv}]);
+  if(!list.length){
+    if(serving.length||containers||stale) return {state:"info",facts,title:"Hay PHP en marcha, pero no veo su versión",why:"Hay procesos de PHP o contenedores con PHP, pero no hay paquetes de PHP instalados en el sistema. Suele pasar cuando PHP va dentro de Docker.",fix:[dockerHint]};
+    return {state:"ok",facts,title:"No hay PHP en este servidor",why:"No se encontró ningún paquete, binario, proceso ni contenedor de PHP. Estos fallos no te afectan aquí.",fix:[]};
   }
 
-  if(!vulnerable) return {...res,state:"ok",title:"Parcheado",why:why+(serving.length?" Si actualizaste hace poco, comprueba que reiniciaste "+serving.join(" y ")+".":""),fix:[]};
-  fix = fix.concat(restart);
-  fix.push("Mientras tanto: session.upload_progress.enabled=0 en php.ini y reinicia PHP (reduce el riesgo, no lo elimina).");
-  if(serving.length) return {...res,state:"bad",title:"Vulnerable y expuesto: parchea ya",why:why+` PHP está atendiendo peticiones web (${serving.join(", ")}).`,fix};
-  return {...res,state:"warn",title:"Vulnerable, pero PHP no está sirviendo web ahora",why:why+" No se detectó mod_php ni PHP-FPM en marcha, así que el riesgo inmediato es bajo. Parchea igualmente o desinstala PHP si no lo usas.",fix};
+  const results=list.map(([br,p])=>({br,p,...judgeBranch(br,p,r)}));
+  results.forEach(x=>facts.push(["PHP "+x.br,x.p.ver+" → "+({vuln:"vulnerable",ok:"corregido",review:"revisar"}[x.state])]));
+  const vulns=results.filter(x=>x.state==="vuln"), reviews=results.filter(x=>x.state==="review");
+  const why=results.map(x=>x.why).join(" ");
+  let fix=[];
+  if(vulns.some(x=>x.esm)) fix.push("Esta versión de Ubuntu ya no tiene soporte estándar: el parche solo está en Ubuntu Pro (ESM). Actívalo con «sudo pro attach» o actualiza a una LTS soportada.");
+  fix=fix.concat([...new Set(vulns.map(x=>x.fix).filter(Boolean))]);
+  if(containers) fix.push(dockerHint);
+
+  if(vulns.length){
+    fix=fix.concat(restart);
+    fix.push("Mientras tanto: session.upload_progress.enabled=0 en php.ini y reinicia PHP (reduce el riesgo, no lo elimina).");
+    if(serving.length) return {state:"bad",facts,title:"Vulnerable y expuesto: parchea ya",why:why+` PHP está atendiendo peticiones web (${serving.join(", ")}).`,fix};
+    return {state:"warn",facts,title:"Vulnerable, pero PHP no está sirviendo web ahora",why:why+" No se detectó mod_php ni PHP-FPM en marcha, así que el riesgo inmediato es bajo. Parchea igualmente o desinstala PHP si no lo usas.",fix};
+  }
+  if(reviews.length) return {state:"info",facts,title:"Revisa el aviso de tu distribución",why,fix:fix.concat(["Consulta https://ubuntu.com/security/CVE-2026-109618 o el aviso de tu distribución."],reviews.map(x=>x.fix).filter(Boolean))};
+  // Todo corregido en disco: falta saber si se reinició.
+  if(stale>0) return {state:"bad",facts,title:"Parcheado en disco, pero sin reiniciar",why:why+` Aun así, ${stale} proceso(s) siguen usando la librería de PHP antigua, que sigue siendo vulnerable hasta que reinicies.`,fix:restart.length?restart:["Reinicia el servidor web o el servicio de PHP que esté en marcha."]};
+  if(serving.length && !root){
+    const reason=r.uid===""?" Esta salida es de una versión anterior del comando, que no comprueba si se reinició el servidor web.":" Ejecutaste el comando sin sudo, así que no puedo ver si los procesos del servidor web ya usan la versión nueva.";
+    return {state:"ok",facts,title:"Parcheado en disco (confirma el reinicio)",why:why+reason,fix:["Repite el comando del paso 1 con sudo para confirmarlo, o reinicia el servicio para ir sobre seguro:"].concat(restart)};
+  }
+  return {state:"ok",facts,title:"Parcheado",why:why+(serving.length?" Y los procesos en marcha ya usan la versión nueva.":""),fix:containers?[dockerHint]:[]};
 }
 
 // Análisis externo por cabeceras HTTP. Solo da "vulnerable" cuando la versión visible lo demuestra.
 const HSAMPLE = `HTTP/2 200
 server: Apache/2.4.58
 x-powered-by: PHP/8.3.20
-set-cookie: PHPSESSID=3f2a9c...; path=/; HttpOnly
+set-cookie: PHPSESSID=…; path=/; HttpOnly
 content-type: text/html; charset=UTF-8`;
-// Versiones base con las que salen las distribuciones: anuncian este número aunque estén parcheadas.
+// Versiones con las que salen las distribuciones: anuncian este número aunque estén parcheadas.
 const DISTRO_BASE = {"8.3.6":"Ubuntu 24.04","8.1.2":"Ubuntu 22.04","7.4.3":"Ubuntu 20.04","7.2.24":"Ubuntu 18.04","8.5.4":"Ubuntu 26.04"};
 function evaluateHeaders(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   if(lines.length===1 && /^(https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i.test(lines[0])){
     const url=/^https?:\/\//i.test(lines[0])?lines[0]:"https://"+lines[0];
-    return {state:"info",title:"Has pegado la dirección, no las cabeceras",why:"El navegador no puede consultar otras webs por seguridad. Ejecuta este comando en la terminal de tu ordenador (Windows, Mac o Linux) y pega aquí lo que devuelva.",facts:[],fix:["curl -sIL "+url]};
+    return {state:"info",title:"Has pegado la dirección, no las cabeceras",why:"Ejecuta este comando en la terminal de tu ordenador (Windows, Mac o Linux) y pega aquí lo que devuelva.",facts:[],fix:["curl -sIL "+url]};
   }
   const hdr=(n)=>lines.filter(l=>l.toLowerCase().startsWith(n+":")).map(l=>l.slice(n.length+1).trim());
-  if(!lines.some(l=>/^HTTP\/[\d.]+\s+\d{3}/i.test(l))) return {state:"info",title:"No reconozco estas cabeceras",why:"Pega la salida completa de curl -sIL. Debe empezar por una línea tipo «HTTP/2 200».",facts:[],fix:[]};
+  const statuses=lines.map(l=>l.match(/^HTTP\/[\d.]+\s+(\d{3})/i)).filter(Boolean).map(m=>+m[1]);
+  if(!statuses.length) return {state:"info",title:"No reconozco estas cabeceras",why:"Pega la salida completa de curl -sIL. Debe empezar por una línea tipo «HTTP/2 200».",facts:[],fix:[]};
   const powered=hdr("x-powered-by"), server=hdr("server"), cookies=hdr("set-cookie");
   const signals=[];
   const verLine=[...powered,...server].find(v=>/PHP\/\d/i.test(v));
@@ -303,70 +374,108 @@ function evaluateHeaders(text){
   if(cookies.some(c=>/^PHPSESSID=/i.test(c))) signals.push("cookie de sesión PHPSESSID");
   if(hdr("x-pingback").length || hdr("link").some(l=>/wp-json/.test(l))) signals.push("cabeceras de WordPress (funciona con PHP)");
   if(hdr("x-generator").some(g=>/drupal|joomla/i.test(g)) || hdr("x-drupal-cache").length) signals.push("cabeceras de Drupal/Joomla (funcionan con PHP)");
-  const facts=[["Server",server.join(" · ")||"no visible"],["X-Powered-By",powered.join(" · ")||"no visible"],["Indicios de PHP",signals.length?signals.join("; "):"ninguno"]];
+  const facts=[["Respuesta",statuses.join(" → ")],["Server",server.join(" · ")||"no visible"],["X-Powered-By",powered.join(" · ")||"no visible"],["Indicios de PHP",signals.length?signals.join("; "):"ninguno"]];
   const undecided={state:"info",facts,fix:["Pide a quien administra el servidor que use los pasos 1 y 2 de esta página."]};
+  const last=statuses[statuses.length-1];
+  if(!verLine && [403,429,503].includes(last) && (hdr("cf-mitigated").length || server.some(s=>/cloudflare|akamai|sucuri|incapsula/i.test(s))))
+    return {...undecided,title:"La web ha bloqueado la consulta automática",why:`Ha respondido ${last} desde su protección anti-bots, así que no se ven sus cabeceras reales. Prueba con curl desde tu ordenador o pide a quien la administra que use los pasos 1 y 2.`};
   if(!verLine){
     if(signals.length) return {...undecided,title:"Usa PHP, pero no se puede saber si está parcheado",why:"La web funciona con PHP pero no enseña su versión. Desde fuera no hay forma segura de saber si tiene el parche."};
     return {...undecided,title:"No se puede determinar desde fuera",why:"La web no muestra ningún indicio de PHP. Puede que no lo use o que lo oculte (es lo habitual). Esto no significa que esté a salvo."};
   }
   const full=(verLine.match(/PHP\/([^\s;,)]+)/i)||[])[1]||"";
   const v=upstreamOf(full), br=branchOf(v);
-  // Si la cabecera trae el sufijo de la distribución, se puede comparar como en el paso 2.
   const ub=full.match(/ubuntu[\d.]*?(\d\d\.\d\d)/), de=full.match(/deb(\d+)u/);
+  const tell=["Avisa a quien administra la web: debe actualizar PHP y reiniciar el servidor web."];
   if(ub && UBUNTU[ub[1]]){
     const vuln=dpkgCmp(full,UBUNTU[ub[1]].fix)<0;
-    return {state:vuln?"bad":"ok",facts,title:vuln?"Vulnerable según la versión que expone":"Parcheada según la versión que expone",why:`Expone ${full}; la corrección para Ubuntu ${ub[1]} es ${UBUNTU[ub[1]].fix}.`,fix:vuln?["Avisa a quien administra la web: debe actualizar PHP y reiniciar el servidor web."]:[]};
+    return {state:vuln?"bad":"ok",facts,title:vuln?"Vulnerable según la versión que expone":"Parcheada según la versión que expone",why:`Expone ${full}; la corrección para Ubuntu ${ub[1]} es ${UBUNTU[ub[1]].fix}.`,fix:vuln?tell:[]};
   }
   if(de && DEBIAN[de[1]]){
     const vuln=dpkgCmp(full,DEBIAN[de[1]].fix)<0;
-    return {state:vuln?"bad":"ok",facts,title:vuln?"Vulnerable según la versión que expone":"Parcheada según la versión que expone",why:`Expone ${full}; la corrección para ${DEBIAN[de[1]].name} es ${DEBIAN[de[1]].fix}.`,fix:vuln?["Avisa a quien administra la web: debe actualizar PHP y reiniciar el servidor web."]:[]};
+    return {state:vuln?"bad":"ok",facts,title:vuln?"Vulnerable según la versión que expone":"Parcheada según la versión que expone",why:`Expone ${full}; la corrección para ${DEBIAN[de[1]].name} es ${DEBIAN[de[1]].fix}.`,fix:vuln?tell:[]};
   }
   if(v && DISTRO_BASE[v]) return {...undecided,title:"No se puede saber: puede ser una versión de distribución",why:`Expone PHP ${v}, que es la versión con la que sale ${DISTRO_BASE[v]}. Esa distribución aplica el parche sin cambiar el número, así que puede estar parcheada o no.`};
   const fixed=UPSTREAM[br];
   if(!v) return {...undecided,title:"No puedo leer la versión",why:`La cabecera dice «${verLine}», pero no reconozco el número.`};
   if(!fixed) return {state:"bad",facts,title:"Muy probablemente vulnerable",why:`Expone PHP ${v}. La rama ${br} ya no recibe parches oficiales; solo estaría a salvo si su proveedor la mantiene por su cuenta.`,fix:["Avisa a quien administra la web: debe pasar a PHP 8.2 o superior y actualizar a la última versión."]};
-  if(dpkgCmp(v,fixed)<0) return {state:"bad",facts,title:"Vulnerable según la versión que expone",why:`Expone PHP ${v}, anterior a la versión corregida ${fixed}.`,fix:["Avisa a quien administra la web: debe actualizar PHP y reiniciar el servidor web.","Además, conviene que deje de mostrar la versión (expose_php = Off en php.ini)."]};
+  if(dpkgCmp(v,fixed)<0) return {state:"bad",facts,title:"Vulnerable según la versión que expone",why:`Expone PHP ${v}, anterior a la versión corregida ${fixed}.`,fix:tell.concat(["Además, conviene que deje de mostrar la versión (expose_php = Off en php.ini)."])};
   return {state:"ok",facts,title:"Parcheada según la versión que expone",why:`Expone PHP ${v}, igual o posterior a la versión corregida ${fixed}. Se fía de lo que dice la cabecera; quien administra la web puede confirmarlo con los pasos 1 y 2.`,fix:[]};
 }
 
+// Convierte la respuesta del Worker al mismo texto que da curl -sIL, para usar una sola lógica.
+function hopsToText(data){
+  return (data.hops||[]).map(h=>[`HTTP/1.1 ${h.status}`].concat(h.headers.map(([n,v])=>`${n}: ${v}`)).join("\n")).join("\n\n");
+}
+
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
-function render(){ document.getElementById("result").innerHTML=verdictHTML(evaluate(parse(document.getElementById("out").value)),{bad:"Vulnerable",warn:"Vulnerable · no expuesto",ok:"Sin riesgo",info:"Revisar"}); }
-function renderH(){ document.getElementById("hresult").innerHTML=verdictHTML(evaluateHeaders(document.getElementById("hdrs").value),{bad:"Vulnerable",warn:"Atención",ok:"Parcheada (según cabecera)",info:"No se puede determinar"}); }
-function verdictHTML(v,labels){
-  const pill=labels[v.state];
+const isCmd=f=>/^(sudo|Consulta|curl|docker)/.test(f);
+function verdictHTML(v,labels,example){
+  const pill=(example?"Ejemplo · ":"")+labels[v.state];
   return `
     <div class="verdict ${v.state}">
-      <span class="pill">${pill}</span>
+      <span class="pill">${esc(pill)}</span>
       <p class="vtitle">${esc(v.title)}</p>
       <p>${esc(v.why)}</p>
-      <dl class="facts">${v.facts.map(([k,val])=>`<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join("")}</dl>
-      ${v.fix.length?`<div><p><strong>Qué hacer</strong></p><ol class="fixlist">${v.fix.map(f=>`<li>${/^(sudo|Consulta|curl)/.test(f)?`<code>${esc(f)}</code>`:esc(f)}</li>`).join("")}</ol></div>`:""}
+      ${v.facts.length?`<dl class="facts">${v.facts.map(([k,val])=>`<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join("")}</dl>`:""}
+      ${v.fix.length?`<div><p><strong>Qué hacer</strong></p><ol class="fixlist">${v.fix.map(f=>`<li>${isCmd(f)?`<code>${esc(f)}</code>`:esc(f).replace(/(docker exec [^.]+?;')/,"<code>$1</code>")}</li>`).join("")}</ol></div>`:""}
     </div>`;
 }
-const hd=document.getElementById("hdrs"); hd.value=HSAMPLE;
-document.getElementById("hcheck").addEventListener("click",()=>{document.getElementById("hexbadge").hidden=hd.value.trim()!==HSAMPLE.trim(); renderH();});
-document.getElementById("hclear").addEventListener("click",()=>{hd.value="";document.getElementById("hresult").innerHTML="";document.getElementById("hexbadge").hidden=true;hd.focus();});
-hd.addEventListener("input",()=>{document.getElementById("hexbadge").hidden=hd.value.trim()!==HSAMPLE.trim();});
+const L1={bad:"Vulnerable",warn:"Vulnerable · no expuesto",ok:"Sin riesgo",info:"Revisar"};
+const L2={bad:"Vulnerable",warn:"Atención",ok:"Parcheada (según cabecera)",info:"No se puede determinar"};
+const $=id=>document.getElementById(id);
+function render(){ $("result").innerHTML=verdictHTML(evaluate(parse($("out").value)),L1,$("out").value.trim()===SAMPLE.trim()); }
+function renderH(){ $("hresult").innerHTML=verdictHTML(evaluateHeaders($("hdrs").value),L2,$("hdrs").value.trim()===HSAMPLE.trim()); }
 
-document.getElementById("cmd").textContent=CMD;
-const out=document.getElementById("out"); out.value=SAMPLE;
-document.getElementById("fixtable").innerHTML=[
+$("cmd").textContent=CMD;
+$("out").value=SAMPLE; $("hdrs").value=HSAMPLE;
+$("fixtable").innerHTML=[
   ...Object.entries(UBUNTU).map(([k,u])=>[`Ubuntu ${k}${u.esm?" (solo Ubuntu Pro)":""}`,u.pkg,u.fix]),
   ...Object.values(DEBIAN).map(d=>[d.name,d.pkg,d.fix]),
   ["PHP oficial, Ondřej Surý, Remi, Docker","8.2 / 8.3 / 8.4 / 8.5","8.2.35 · 8.3.36 · 8.4.27 · 8.5.12"],
   ["PHP 8.1 o anterior (oficial)","—","sin parche: actualiza de rama"]
 ].map(r=>`<tr><td>${esc(r[0])}</td><td class="v">${esc(r[1])}</td><td class="v">${esc(r[2])}</td></tr>`).join("");
 
-document.getElementById("check").addEventListener("click",()=>{document.getElementById("exbadge").hidden=out.value.trim()!==SAMPLE.trim(); render();});
-document.getElementById("clear").addEventListener("click",()=>{out.value="";document.getElementById("result").innerHTML="";document.getElementById("exbadge").hidden=true;out.focus();});
-out.addEventListener("input",()=>{document.getElementById("exbadge").hidden=out.value.trim()===SAMPLE.trim()?false:true;});
-document.getElementById("copy").addEventListener("click",()=>{
-  const msg=document.getElementById("copied");
+const syncBadge=(ta,badge,sample)=>{$(badge).hidden=$(ta).value.trim()!==sample.trim();};
+$("check").addEventListener("click",()=>{syncBadge("out","exbadge",SAMPLE); render();});
+$("clear").addEventListener("click",()=>{$("out").value="";$("result").innerHTML="";$("exbadge").hidden=true;$("out").focus();});
+$("out").addEventListener("input",()=>syncBadge("out","exbadge",SAMPLE));
+$("hcheck").addEventListener("click",()=>{syncBadge("hdrs","hexbadge",HSAMPLE); renderH();});
+$("hclear").addEventListener("click",()=>{$("hdrs").value="";$("hresult").innerHTML="";$("hexbadge").hidden=true;$("hdrs").focus();});
+$("hdrs").addEventListener("input",()=>syncBadge("hdrs","hexbadge",HSAMPLE));
+$("copy").addEventListener("click",()=>{
+  const msg=$("copied");
   navigator.clipboard.writeText(CMD).then(()=>{msg.textContent="Copiado";},()=>{
-    const r=document.createRange(); r.selectNodeContents(document.getElementById("cmd")); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+    const r=document.createRange(); r.selectNodeContents($("cmd")); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
     msg.textContent="Seleccionado: pulsa Ctrl+C";
   });
 });
+
+// Modo automático: solo si hay Worker configurado y responde.
+async function analyzeUrl(){
+  const btn=$("fetchbtn"), err=$("fetcherr"); let u=$("url").value.trim();
+  if(!u){ err.textContent="Escribe la dirección de la web."; err.hidden=false; return; }
+  if(!/^https?:\/\//i.test(u)) u="https://"+u;
+  err.hidden=true; btn.disabled=true; btn.textContent="Analizando…";
+  try{
+    const resp=await fetch(WORKER_URL+"?url="+encodeURIComponent(u),{method:"GET",credentials:"omit",cache:"no-store"});
+    const data=await resp.json().catch(()=>({error:"Respuesta no válida del servicio."}));
+    if(data.hops&&data.hops.length){
+      $("hdrs").value=hopsToText(data); $("hexbadge").hidden=true; renderH();
+      $("curlcmd").textContent="curl -sIL "+u;
+      if(data.error){ err.textContent=data.error; err.hidden=false; }
+      $("hresult").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"nearest"});
+    } else { err.textContent=data.error||"No se pudo analizar la web."; err.hidden=false; }
+  }catch(e){
+    err.textContent="No se pudo contactar con el servicio de análisis. Usa el método manual de abajo."; err.hidden=false;
+  }finally{ btn.disabled=false; btn.textContent="Analizar"; }
+}
+if(WORKER_URL){
+  $("automode").hidden=false;
+  $("manualintro").textContent="¿Prefieres no usar el servicio? Ejecuta esto en tu ordenador, cambiando la dirección, y pega el resultado.";
+  $("fetchbtn").addEventListener("click",analyzeUrl);
+  $("url").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); analyzeUrl(); } });
+}
 render(); renderH();
 </script>
 </body>
